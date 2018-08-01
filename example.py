@@ -11,11 +11,8 @@ def main():
     enrollments = read_csv('enrollments.csv')
     daily_engagement = read_csv('daily_engagement_full.csv')
     project_submissions = read_csv('project_submissions.csv')
-    print("number of rows in enrollments, engagement and submissions" + "")
-    print(len(enrollments), len(daily_engagement), len(project_submissions))
-
     # Clean up the data types in the enrollments table
-    #dataCleanup(enrollments, daily_engagement, project_submissions)
+    dataCleanup(enrollments, daily_engagement, project_submissions)
 
     #cleanup the column name to account_key
     for dictionary in daily_engagement:
@@ -26,10 +23,32 @@ def main():
     uniqueEngagementStudents = getUnique(daily_engagement, 'account_key')
     uniqueProjectStudents = getUnique(project_submissions, 'account_key')
 
+    udacity_test_accounts = set()
+    for data in enrollments:
+            if data['is_udacity']:
+                udacity_test_accounts.add(data['account_key'])
+
+    non_udacity_enrollment = removeUdacityAccounts(enrollments, udacity_test_accounts)
+    non_udacity_engagement = removeUdacityAccounts(daily_engagement, udacity_test_accounts)
+    non_udacity_project_submissions = removeUdacityAccounts(project_submissions, udacity_test_accounts)
+
+    print(len(non_udacity_enrollment))
+    print(len(non_udacity_engagement))
+    print(len(non_udacity_project_submissions))
+
+
+
     print("number of students in enrollments, daily engagement and project submission")
     print("")
     print(len(uniqueEnrollmentStudents), len(uniqueEngagementStudents), len(uniqueProjectStudents))
 
+
+def removeUdacityAccounts(list, udacity_test_accounts):
+    without_udacity_accounts = []
+    for datapoint in list:
+        if datapoint['account_key'] not in udacity_test_accounts:
+            without_udacity_accounts.append(datapoint)
+    return without_udacity_accounts
 
 def getUnique(list, keyname):
     listOfUniqueNames = set()
