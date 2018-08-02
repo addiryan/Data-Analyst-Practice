@@ -32,16 +32,43 @@ def main():
     non_udacity_engagement = removeUdacityAccounts(daily_engagement, udacity_test_accounts)
     non_udacity_project_submissions = removeUdacityAccounts(project_submissions, udacity_test_accounts)
 
-    print(len(non_udacity_enrollment))
-    print(len(non_udacity_engagement))
-    print(len(non_udacity_project_submissions))
+    paid_students = {}
+    for data in non_udacity_enrollment:
+        if not data['is_canceled'] or data['days_to_cancel'] > 7:
+            account_key = data['account_key']
+            enrollment_date = data['join_date']
+
+            if account_key not in paid_students or \
+                    enrollment_date > paid_students[account_key]:
+                paid_students[account_key] = enrollment_date
+
+    paid_enrollments = remove_free_trial_cancels(non_udacity_enrollment, paid_students)
+    paid_engagement = remove_free_trial_cancels(non_udacity_engagement, paid_students)
+    paid_submissions = remove_free_trial_cancels(non_udacity_project_submissions, paid_students)
+    
 
 
+    paid_engagement_in_first_week = []
+    for engagement_record in paid_engagement:
+        account_key = engagement_record['account_key']
+        join_date = paid_students[account_key]
+        engagement_record_date = engagement_record['utc_date']
 
-    print("number of students in enrollments, daily engagement and project submission")
-    print("")
-    print(len(uniqueEnrollmentStudents), len(uniqueEngagementStudents), len(uniqueProjectStudents))
+        if within_one_week(join_date, engagement_record_date):
+            paid_engagement_in_first_week.append(engagement_record)
 
+    print(len(paid_engagement_in_first_week))
+
+def within_one_week(join_date, engagement_date):
+    time_delta = engagement_date - join_date
+    return time_delta.days >= 0 and time_delta.days < 7
+
+def remove_free_trial_cancels(data, paid_students):
+    new_data = []
+    for data_point in data:
+        if data_point['account_key'] in paid_students:
+            new_data.append(data_point)
+    return new_data
 
 def removeUdacityAccounts(list, udacity_test_accounts):
     without_udacity_accounts = []
