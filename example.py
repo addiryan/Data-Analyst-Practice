@@ -6,6 +6,7 @@ import numpy as np
 import pandas as ps
 import csv
 from datetime import datetime as dt
+from collections import defaultdict
 
 def main():
     enrollments = read_csv('enrollments.csv')
@@ -13,15 +14,8 @@ def main():
     project_submissions = read_csv('project_submissions.csv')
     # Clean up the data types in the enrollments table
     dataCleanup(enrollments, daily_engagement, project_submissions)
-
-    #cleanup the column name to account_key
     for dictionary in daily_engagement:
         dictionary['account_key'] = dictionary.pop('acct')
-
-    #Get lists of unique students in the different files
-    uniqueEnrollmentStudents = getUnique(enrollments, 'account_key')
-    uniqueEngagementStudents = getUnique(daily_engagement, 'account_key')
-    uniqueProjectStudents = getUnique(project_submissions, 'account_key')
 
     udacity_test_accounts = set()
     for data in enrollments:
@@ -45,8 +39,12 @@ def main():
     paid_enrollments = remove_free_trial_cancels(non_udacity_enrollment, paid_students)
     paid_engagement = remove_free_trial_cancels(non_udacity_engagement, paid_students)
     paid_submissions = remove_free_trial_cancels(non_udacity_project_submissions, paid_students)
-    
 
+    for engagement_record in paid_engagement:
+        if engagement_record['num_courses_visited'] > 0:
+            engagement_record['has_visited'] = 1
+        else:
+            engagement_record['has_visited'] = 0
 
     paid_engagement_in_first_week = []
     for engagement_record in paid_engagement:
@@ -57,7 +55,51 @@ def main():
         if within_one_week(join_date, engagement_record_date):
             paid_engagement_in_first_week.append(engagement_record)
 
-    print(len(paid_engagement_in_first_week))
+    engagement_by_account = group_data(paid_engagement_in_first_week, 'account_key')
+
+    '''
+    total_minutes_by_account = {}
+
+    for account_key, engagement_for_student in engagement_by_account.items():
+        total_minutes = 0
+
+        for engagement_record in engagement_for_student:
+            total_minutes += engagement_record['total_minutes_visited']
+
+        total_minutes_by_account[account_key] = total_minutes
+
+    total_minutes = total_minutes_by_account.values()
+    '''
+    subway_project_lesson_keys = ['746169184', '3176718735']
+
+    passing_students = find_passing_students(paid_submissions, subway_project_lesson_keys)
+    passing_engagement, non_passing_engagement = find_passing_engagement(paid_engagement_in_first_week, passing_students)
+    print(len(passing_engagement))
+    print(len(non_passing_engagement))
+
+    days_visited_by_account = sum_grouped_items(engagement_by_account, 'has_visited')
+    describe_data(days_visited_by_account.values())
+
+def find_passing_students(data, lesson_keys):
+    passing_students = set()
+
+    for data_point in data:
+        if data_point['lesson_key'] in lesson_keys:
+            if data_point['assigned_rating'] == 'PASSED' or data_point['assigned_rating'] == 'DISTINCTION':
+                passing_students.add(data_point['account_key'])
+
+    return passing_students
+
+def find_passing_engagement(data, passing_students):
+    passing_engagement = list()
+    non_passing_engagement = list()
+    for data_point in data:
+        if data_point['account_key'] in passing_students:
+            passing_engagement.append(data_point)
+        else:
+            non_passing_engagement.append(data_point)
+
+    return passing_engagement, non_passing_engagement
 
 def within_one_week(join_date, engagement_date):
     time_delta = engagement_date - join_date
@@ -69,6 +111,29 @@ def remove_free_trial_cancels(data, paid_students):
         if data_point['account_key'] in paid_students:
             new_data.append(data_point)
     return new_data
+
+def describe_data(data):
+    print(np.mean(data))
+    print(np.std(data))
+    print(np.min(data))
+    print(np.max(data))
+
+
+def sum_grouped_items(grouped_data, field_name):
+    summed_data = {}
+    for key, data_points in grouped_data.items():
+        total = 0
+        for data_point in data_points:
+            total += data_point[field_name]
+        summed_data[key] = total
+    return summed_data
+
+def group_data(data, key_name):
+    grouped_data = defaultdict(list)
+    for data_point in data:
+        key = data_point['account_key']
+        grouped_data[key].append(data_point)
+    return grouped_data
 
 def removeUdacityAccounts(list, udacity_test_accounts):
     without_udacity_accounts = []
