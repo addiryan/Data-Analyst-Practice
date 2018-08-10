@@ -46,6 +46,7 @@ def main():
         else:
             engagement_record['has_visited'] = 0
 
+
     paid_engagement_in_first_week = []
     for engagement_record in paid_engagement:
         account_key = engagement_record['account_key']
@@ -74,11 +75,28 @@ def main():
 
     passing_students = find_passing_students(paid_submissions, subway_project_lesson_keys)
     passing_engagement, non_passing_engagement = find_passing_engagement(paid_engagement_in_first_week, passing_students)
-    print(len(passing_engagement))
-    print(len(non_passing_engagement))
+    passing_engagement = group_data(passing_engagement, 'account_key')
+    non_passing_engagement = group_data(non_passing_engagement, 'account_key')
 
-    days_visited_by_account = sum_grouped_items(engagement_by_account, 'has_visited')
-    describe_data(days_visited_by_account.values())
+    days_visited_passing_students = sum_grouped_items(passing_engagement, 'has_visited')
+    days_visited_non_passing_students = sum_grouped_items(non_passing_engagement, 'has_visited')
+    print("Passing students")
+    describe_data(days_visited_passing_students.values())
+    print("Failing students")
+    describe_data(days_visited_non_passing_students.values())
+    minutes_visited_passing_students = sum_grouped_items(passing_engagement, 'total_minutes_visited')
+    minutes_visited_failing_students = sum_grouped_items(non_passing_engagement, 'total_minutes_visited')
+    print("minutes visited passing students")
+    describe_data(minutes_visited_passing_students.values())
+    print("minutes visited failing students")
+    describe_data(minutes_visited_failing_students.values())
+    lessons_completed_passing = sum_grouped_items(passing_engagement, 'lessons_completed')
+    lessons_completed_failing = sum_grouped_items(non_passing_engagement, 'lessons_completed')
+    print("lessons completed passing")
+    describe_data(lessons_completed_passing.values())
+    print("lessons completed failing")
+    describe_data(lessons_completed_failing.values())
+
 
 def find_passing_students(data, lesson_keys):
     passing_students = set()
@@ -119,19 +137,26 @@ def describe_data(data):
     print(np.max(data))
 
 
+
 def sum_grouped_items(grouped_data, field_name):
     summed_data = {}
     for key, data_points in grouped_data.items():
         total = 0
         for data_point in data_points:
+
             total += data_point[field_name]
+            if field_name == 'has_visited':
+                if data_point[field_name] > 1:
+                    print("Denne TELLER MER ENN 1 WTF")
+                elif total > 7:
+                    total = 7
         summed_data[key] = total
     return summed_data
 
 def group_data(data, key_name):
     grouped_data = defaultdict(list)
     for data_point in data:
-        key = data_point['account_key']
+        key = data_point[key_name]
         grouped_data[key].append(data_point)
     return grouped_data
 
